@@ -1,0 +1,525 @@
+#+title: org table
+
+* org table还是table
+   #+caption: 功能对比
+   | mode      | 程序读取计算 | 　单元格拆分与合并         | 列分组         | 内置链接 |
+   |-----------+--------------+----------------------------+----------------+----------|
+   | org table | Yes          | 不支持自动，需手动打表格线 | 支持简易形式<> | 支持     |
+   | table     | No           | 支持                       | 支持           | 不支持   |
+
+建议:
+- 需要对表格数据做统计的场景用org table
+- 需要制作presentation的时候用table
+* org table和table来回转换
+  M-m m t c
+* org table导出到excel文件
+  M-m m t E, 选择csv格式，然后输入文件路径名称，回车即可.
+* 含中英文的表格对齐
+** valign解决方案
+下载valigh的github项目到本地，然后在user-config ()里面配置如下
+   #+begin_src elisp
+     (load-file "~/work/github/valign/valign.el")
+     (valign-mode t)
+   #+end_src
+这个方案的问题是性能比较差，所以不推荐
+** 采用cnfonts解决
+参考github cnfonts项目的建议安装，并且做好对齐设置，打开org文件后，手动选择org-mode profile, 就可以对齐表格
+英文字体，最好选择Source Code Pro, 这样表格线横线不会出现起伏
+中文字体后，选择"文泉驿等宽微米黑", 该字体需要安装, 参考[[../font/readme.org]]
+
+* 插入|字符
+** 第一种方法，插入转义字符
+\vert
+并且输入命令: org-toggle-pretty-entities
+但是这样比较繁琐，每次要输入命令显示，而且会造成表格不对齐
+
+表格中嵌入latex公式时，这种方式仍然有效
+** 第二种方法unicode∣
+简单的复制这个字符: ∣ 到table中即可.不会破坏表格的对齐
+unicode字符是个不错的选择，以后可以多使用   
+* 列宽度
+  字段行下面专门增加一行，<n>来表示需要显示多少宽度，
+  C-c Tab (M-x org-table-shrink)用于收缩和展开该字段
+  C-u C-u C-c TAB (org-table-expand) 展开所有字段
+
+  org文档开头增加 #+STARTUP: shrink, 自动收缩字段到指定宽度
+  全局设置最方便:
+  (setq org-startup-shrink-all-tables t)
+* 列分组
+在head下面加一行，开头第一列用\标识，后面每个分组用< >来表示，导出html的时候，会出现两条竖线，将分组的列包括在一起. 如下所述.
+| N | N^2 | N^3 | N^4 | sqrt(n) | sqrt[4](N) |
+| / |   < |     |   > |       < |          > |
+|---+-----+-----+-----+---------+------------|
+| 1 |   1 |   1 |   1 |       1 |          1 |
+| 2 |   4 |   8 |  16 |  1.4142 |     1.1892 |
+| 3 |   9 |  27 |  81 |  1.7321 |     1.3161 |
+|---+-----+-----+-----+---------+------------|
+#+TBLFM: $2=$1^2::$3=$1^3::$4=$1^4::$5=sqrt($1)::$6=sqrt(sqrt(($1)))
+* 显示行号和列号
+M-m m t t o
+再按一次就是隐藏. 
+* 总是显示表头
+  在大表格中很有用。先安装org-table-sticky-header package
+  #+BEGIN_SRC elisp
+    dotspacemacs-additional-packages '(.... org-table-sticky-header)
+  #+END_SRC
+  然后在user-config里面设置自动使用sticky mode
+  #+BEGIN_SRC elisp
+    (add-hook 'org-mode-hook 'org-table-sticky-header-mode)
+  #+END_SRC
+* table不能正常工作的问题
+  主要是要左对齐，左边不能有空格, 
+  使用(setq org-startup-indented t)后，问题解决
+
+* tblfm计算
+  建议手动插入算式
+** 算式构成
+*** 位置
+    表格下面可以直接写公式, 不要有空行
+*** 开头标记
+    #+tblfm: 
+    注意后面有一个空格
+*** 行号和列号
+**** 绝对位置
+     @行号$列号
+     可以用绝对值，比如@4表示第4行。
+**** 相对位置
+可以用相对值，相对于等式左边的行号或者列号，如@15$13='(/ (+ @3$13..@-1$13) 12.0);N  这里的@-1表示相对于@15的上一行，也就是@14.
+**** 当前位置
+     不写就是用当前行或者列的位置
+**** 不写表示所有
+     比如$4 其实表示所有行的第4列, @不写就是表示所有行
+**** 最后一行
+     @>
+*** 计算式
+    '开头表示不要立刻计算，这是lisp常规语法.
+*** 多个计算式的分隔符
+     ::
+*** 模式
+    模式分为三种: 默认没有后缀的字符串模式，N模式和L模式
+    1. 没有后缀表示字符串，值会包含""
+    2. ;L是可以将表格中的数据提取出来，但是不带"", 看做elisp symbol
+       - 使用了;L后，需要加上前后双引用才行，比如"$5" 这样可以，但是直接$5是不行的
+    3. ;N则会自动转换成数字，如果转换不了就会用默认值0
+     
+*** 获取一列, 一行数据
+**** 如果计算结果是保存到另一列，可以用 $N 表示列
+**** 如果计算结果是保存到一个单元格中，可以用 @n1$m..@n2$n 表示列
+     ;N的时候可以这样获取
+     @row1$m..@row2$n
+     这样他们会被实际的数据代替，比如
+     #+TBLFM: @5$2='(+ @2$2..@-1$2);N
+     =>
+     (+ 1 -1 3)
+     
+** 重新计算
+   光标放在表格里任何一个位置，M-m m t r, 这种方式不支持一列的所有行的计算，
+   最好的方法是光标放在公式上，然后C-c C-c
+** 浮点数
+*** 确保结果是浮点数
+    参与/运算的至少有一个是浮点数即可，比如(/ 2 3.0) 这样结果就会是浮点数
+*** 小数位数控制
+    (format "%0.2f" x)
+** 显示百分比
+在上面浮点数计算的时候，乘以100, 然后将结果凭借字符串%
+#+begin_src elisp
+  #+tblfm: $4='(concat (format "%0.2f" (* (/ (* $3 1.0) $2) 100)) "%");N
+#+end_src
+** 管理多个表达式
+   移动到表格或者算式上，
+   C-c '进入一个新的buffer，里面的每个表达式占一行，编辑起来就比较方便
+   编辑完后保存退出的方式有多种: 
+   1. C-s
+   2. C-'
+   3. C-u C-c C-c 这会自动运行算式
+** 创建自定义的函数
+可以在.spacemacs的dotspacemacs/user-config ()中添加函数，然后就可以使用。
+但是注意，必须先打开.spacemacs文件到buffer中才行。原因不明.
+** 在src block中计算表格数据
+*** 获取表格变量
+org table要使用 #+name: tableName
+
+src block中的x=tablName表示数据来源于上面的表格
+
+这样后面elisp就可以直接使用x引用表格数据了, 注意x不包含head
+*** 获取第n行数据
+n从0开始
+
+(nth n x)
+
+*** 获取第m列数据
+这里是获取第12列数据, 保存到col中，然后从col中获取第3行对应的数据
+#+begin_src elisp
+  (setq col (mapcar (lambda (r) (nth 11 r)) x))
+  (nth 2 col)
+#+end_src
+
+*** 计算第m列数据之和
+#+begin_src elisp
+  (setq col (mapcar (lambda (r) (nth 11 r)) x))
+  (apply '+ col)
+#+end_src
+
+*** 
+#+name: tbl
+| a | b |
+|---+---|
+| 0 | 1 |
+| 2 | 3 |
+| 4 | 5 |
+| 6 | 7 |
+| 8 | 9 |
+
+#+begin_src elisp :var x=tbl col=0
+  (mapconcat (lambda (r) (number-to-string (nth col r))) x ",")
+#+end_src
+
+#+RESULTS:
+: 0,2,4,6,8
+
+** 如何引用表格中其他字段
+   elisp中用@行号　$列号来引用
+
+   可以用C-c } 显示/隐藏行号和列号
+** 插入公式
+   首先将光标定位到要计算的cell，然后可以通过下面的三种方式激活输入mini buffer，填写elisp计算代码
+*** 组合键
+    C-u C-c =
+*** spacemacs快捷键
+    M-m m t e
+** 除法
+   /用于除法，如果需要结果为浮点数，那参与运算的分子和分母也都需要为浮点数，可以将分子或者分母乘以1.0来转化为浮点数
+   #+BEGIN_EXAMPLE
+   #+TBLFM: @4$4='(/ (* @4$3 1.0) @2$3);N   
+   #+END_EXAMPLE
+** 浮点数小数位
+   (format "%0.2f" x)
+
+* elisp控制org table
+** 读取某个表格
+1. 在表格上增加名称#+name: t1
+2. src中使用:var x=t1来引用
+#+begin_example
+#+begin_src elisp :var x=t1
+#+end_example
+** 加载某个el文件并使用其中的函数
+isFilled是common.el内的一个函数
+#+begin_src elisp 
+(load "~/work/gitlab/gitlab.com/quantitativeFinance/evaluation/backtest/quantopian/report/common")
+(isFilled nil)
+#+end_src
+
+** 生成org table
+关键是使用backquotes符号标记插入变量值的位置, 比如 ,alpha
+#+name: make-table
+#+BEGIN_SRC emacs-lisp :results value
+  (setq tol 0.1)
+  (setq alpha 1.38)
+  (setq alpha_1 (- 90 alpha))
+  `(("angle" "symbol"   "value"  "max"         "min") hline 
+    ("toe"   "\\alpha"   ,alpha  ,(+ alpha tol)  ,(- alpha tol))
+    ("c"   "\\alpha_1"   ,alpha_1  ,(+ alpha_1 tol)  ,(- alpha_1 tol))
+    )
+#+END_SRC
+
+#+RESULTS: make-table
+| angle | symbol   | value |   max |                min |
+|-------+----------+-------+-------+--------------------|
+| toe   | \alpha   |  1.38 |  1.48 | 1.2799999999999998 |
+| c     | \alpha_1 | 88.62 | 88.72 |  88.52000000000001 |
+
+** 参考文档
+[[http://kitchingroup.cheme.cmu.edu/blog/2019/02/12/Using-results-from-one-code-block-in-another-org-mode/#org679863a][Using results from one code block in another org-mode
+]]
+* babel中使用python
+** 使用当前python环境
+:session并不需要, 下面的方法显示当前正在使用虚拟环境的的python程序, 而且:session会导致print(df)的时候字段名的位置没有对齐
+#+begin_src python :results output
+import sys
+print (sys.executable)
+#+end_src
+
+#+RESULTS:
+: /home/dean/work/pyenv/quantopianPython/bin/python
+
+** 读取org table转换成DataFrame
+假设有个org table 名为: #+name: t1, 使用:var t=t1就可以加载该表格. 但是这样字段名称没有加载.
+#+name: t1
+| a   |   b |
+|-----+-----|
+| 1   |   2 |
+| 3   |   4 |
+
+#+begin_src python :var t=t1 :results output
+  import pandas as pd
+  df = pd.DataFrame(t) # t由list<list>转换成了DataFrame对象
+  print(df)
+#+end_src
+
+#+RESULTS:
+:    0  1
+: 0  1  2
+: 1  3  4
+
+** 确保org table字段名称也被加载
+在字段名下面增加一行，就可以获得字段名称
+#+name: t2
+| a | b |
+|   |   |
+|---+---|
+| 1 | 2 |
+| 3 | 4 |
+
+#+begin_src python :var t=t2 :results output
+  import pandas as pd
+  df = pd.DataFrame(t) # t由list<list>转换成了DataFrame对象
+  print(df)
+#+end_src
+
+#+RESULTS:
+:    0  1
+: 0  a  b
+: 1      
+: 2  1  2
+: 3  3  4
+
+** 获取不带字段名的数据
+通过iloc使用python的切片功能截取指定范围的行获得数据, 并重新建立索引
+#+name: t3
+| a | b |
+|   |   |
+|---+---|
+| 1 | 2 |
+| 3 | 4 |
+
+#+begin_src python :var t=t3 :results output
+  import pandas as pd
+  df = pd.DataFrame(t) # t由list<list>转换成了DataFrame对象
+	df = df.iloc[2::]
+	df = df.reset_index(drop=True)
+  print(df)
+#+end_src
+
+#+RESULTS:
+:    0  1
+: 0  1  2
+: 1  3  4
+
+** 显示结果在results中
+*** 两种模式
+1. :results value是functional模式，也就是把src block中的代码看做一个函数，最后的return语句返回结果
+2. :results output是scripting模式，当做一段脚本代码去运行, 所有结果都输出到stdout，然后显示在代码块下面，不需要return语句
+*** 一种是:return属性指定变量名称
+:results verbatim可以保证输出结果没有被处理
+#+BEGIN_SRC python :exports both :results verbatim :return df
+import pandas as pd
+df = pd.DataFrame({'A': [1000, 1000], 'B' : [60, 100]})
+#+END_SRC
+
+#+RESULTS:
+:       A    B
+: 0  1000   60
+: 1  1000  100
+
+*** 另一种是显示所有输出到stdout的信息
+只需要设置:results output
+#+BEGIN_SRC python :exports both :results output
+import pandas as pd
+test = pd.DataFrame({'A': [1000, 1000], 'B' : [60, 100]})
+print(test)
+
+
+#+END_SRC
+
+#+RESULTS:
+:       A    B
+: 0  1000   60
+: 1  1000  100
+: /home/dean/work/pyenv/quantopianPython/bin/python
+
+** 将dataframe转变为org table
+   主要是使用这个属性:results table, 然后先将df转换成csv文本, 并且按照,分隔，按照\n换行。
+   df里面包含了字段名称, df.values里面包含了值, [None]表示分隔行
+   #+BEGIN_SRC python :exports both :results table
+     import pandas as pd
+     df = pd.DataFrame({'A': [1000, 1000], 'B' : [60, 100]})
+     result = [list(df)] + [None] + df.values.tolist()
+     return result
+   #+END_SRC
+    
+   #+RESULTS:
+   |    A |   B |
+   |------+-----|
+   | 1000 |  60 |
+   | 1000 | 100 |
+
+** :session的使用
+   注意, 要先在第一个block中C-c C-c运行一下, 后面的block才能调用p函数
+   #+begin_src python :session test
+     a = 1
+     def p(x):
+       print(x)
+   #+end_src
+
+   #+RESULTS:
+
+   #+begin_src python :session test :results output
+     p('b')
+   #+end_src
+
+   #+RESULTS:
+   : b
+
+** 加载python脚本
+在org相同目录下有一个common.py文件，代码如下
+#+begin_src python
+def hello():
+    print("hello")
+#+end_src
+
+然后在src block中如下使用该模块:
+#+begin_src python :results output
+import common
+common.hello()
+#+end_src
+
+#+RESULTS:
+: hello
+
+** 修改org table
+主要是增加在#+results: 后面接上一个name: mytable-calc, 和src block的name相同
+注意，
+1. 字段名写在第一行
+2. 第二行要有，可以为空，也可以是描述
+3. 第三行是分割线
+4. 之后都是数据
+5. ----分隔符会丢失，比较讨厌
+
+#+name: mytable
+#+RESULTS: mytable-calc
+| a | b | c |
+|   |   |   |
+|---+---+---|
+| 0 | 0 | 0 |
+| 0 | 0 | 0 |
+
+
+#+name: mytable-calc
+#+begin_src python :var t=mytable
+  import common
+  df, cols2 = common.tableToDF(t)
+  return common.dfToTable(df, cols2)
+#+end_src
+
+common.py代码是自己写的, 提供了一些方便的函数做org table和df之间的转换
+
+* tool库操纵org table
+** 设计目标
+   把org table作为数据源，利用python pandas datafrme的数据处理功能(特别是统计功能), 对数据进行分析统计，以及可视化.
+   最终还可以将计算后的数据更新到输入的org table。当然也可以输出到新的org table或者显示统计图形。
+** 加载tool库
+   #+begin_src python
+     import sys
+     sys.path.insert(1, "/home/dean/work/gitlab/gitlab.com/mystudy/emacs/org")
+     from tool import MyTable
+   #+end_src
+** org table的要求
+   org table必须按照如下格式准备:
+   1. 字段名写在第一行
+   2. 第二行要有，可以为空，也可以是描述
+   3. 第三行是分割线
+   4. 之后都是数据
+   5. #+name: 要有
+   6. #+results: evalTblCal要和src block的name相同
+   @return 返回df以及字段名第二行的数据columns2
+** src block的要求
+   1. :hlines yes, 这样可以输出的时候保持org table的横线
+   2. src block的name需要指定，如果和org table的#+results:值相同，就是更新org table, 如果不是，则新创建一个results块输出结果
+
+** 创建MyTable对象
+   #+begin_src python :var t=evalTable :hlines yes
+     table = MyTable(table=t) # 从org table创建MyTable对象
+     table = MyTable(csvFilePath="long1.csv") # 从本次csv文件创建MyTable对象
+     table = MyTable(csvFilePath="long1.csv") # 从本次csv文件创建MyTable对象, 默认只显示10行, showRowNum只在csv文件作为数据源时有用
+   #+end_src
+** 设置字段类型
+#+begin_src python
+  table.toFloat(['SPY', 'v3', 'v3.1', 'v3.1-SPY', 'long收益', 'short收益', '总收益', 'long投入成本', 'short借贷最大金额', '每笔交易金额'])
+  table.toInt(['v3.1成交次数'])
+#+end_src
+** 统计函数
+*** 对指定行范围内的全部列进行求和统计
+#+begin_src python
+  sumResult = table.sumColumns(0, 7)
+  table.df['SPY'][8] = sumResult['SPY'] # 赋值到其中一个cell
+#+end_src
+*** 对两列进行加减计算，结果保存到第三列
+#+begin_src python
+  # 计算v3.1-SPY的值
+  table.subtractColumns(0, 7, 'v3.1', 'v3', 'v3.1-SPY')
+
+  # 计算总收益
+  table.addColumns(0, 7, 'long收益', 'short收益', '总收益')
+#+end_src
+*** 对指定行范围内的某一列数值进行复利计算
+#+begin_src python
+  table.df['v3'][7] = table.calCompoundNum(df, 0, 7, 'v3')
+#+end_src
+*** 计算指定行范围内的某列的均值
+#+begin_src python
+  table.df['long投入成本'][9] = table.avgColumn(df, 0, 7, 'long投入成本')
+#+end_src
+
+** 空值处理
+   空值(nan, 'NaN'等)在df中以None值存在，在输出到table的时候的会被换成''
+** 输出浮点数精度
+DataFrame里面保存的浮点数不会减少精度，但是输出的函数会做相应处理，保证到org table的浮点数只有两位小数
+** 输出到org table
+*** 更新原有的org table
+    只需要org table的#+results: 和src block的name相同
+*** 输出到其他results
+    一般用于测试, 只需要#+results: 和src block的name不同
+*** 其他设置
+     src block中:results table或者不设置，代码中要有这句
+     #+begin_src python
+     return table.toOrgTable()
+     #+end_src
+** 读取csv文件，统计后的结果输出到org table
+   示例: 
+
+   #+name: 交易类型分布
+   #+results: 交易类型分布结果
+   | pMACD交易类型 | 总次数1 | gMACD趋势交易类型 | 总次数2 |
+   |               |         |                   |         |
+   |---------------+---------+-------------------+---------|
+   | long          |      50 | long              |      45 |
+   | short         |      22 | short             |      28 |
+   |---------------+---------+-------------------+---------|
+   | 累计          |      72 |                   |      73 |
+    
+   #+name: 交易类型分布结果
+   #+begin_src python :var t=交易类型分布 :hlines yes
+     import sys
+     import numpy as np
+     sys.path.insert(1, "/home/dean/work/gitlab/gitlab.com/mystudy/emacs/org")
+     from tool import MyTable
+     table = MyTable(csvFilePath='./数据模型/分析层/双因子交易明细2019-05-28_2019-07-03_10.csv')
+     df1 = table.df.query('pMACD == "long"')
+    
+     table2 = MyTable(table=t)
+     table2.df['总次数1'][0] = df1['pMACD'].size
+    
+     df2 = table.df.query('pMACD == "short"')
+     table2.df['总次数1'][1] = df2['pMACD'].size
+    
+     table2.df['总次数1'][2] = df1['pMACD'].size + df2['pMACD'].size
+    
+     df3 = table.df.query('累计比较 == "long"')
+     table2.df['总次数2'][0] = df3['累计比较'].size
+    
+     df4 = table.df.query('累计比较 == "short"')
+     table2.df['总次数2'][1] = df4['累计比较'].size
+    
+     table2.df['总次数2'][2] = df3['累计比较'].size + df4['累计比较'].size
+     return table2.toOrgTable()
+   #+end_src

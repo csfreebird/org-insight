@@ -1,0 +1,293 @@
+#+title: org table与dataframe的研究
+* babel中使用python
+** 使用当前python环境
+:session并不需要, 下面的方法显示当前正在使用虚拟环境的的python程序, 而且:session会导致print(df)的时候字段名的位置没有对齐
+#+begin_src python :results output
+import sys
+print (sys.executable)
+#+end_src
+
+#+RESULTS:
+: /home/dean/work/pyenv/quantopianPython/bin/python
+
+** 读取org table转换成DataFrame
+假设有个org table 名为: #+name: t1, 使用:var t=t1就可以加载该表格. 但是这样字段名称没有加载.
+#+name: t1
+| a   |   b |
+|-----+-----|
+| 1   |   2 |
+| 3   |   4 |
+
+#+begin_src python :var t=t1 :results output
+  import pandas as pd
+  df = pd.DataFrame(t) # t由list<list>转换成了DataFrame对象
+  print(df)
+#+end_src
+
+#+RESULTS:
+:    0  1
+: 0  1  2
+: 1  3  4
+
+** 确保org table字段名称也被加载
+在字段名下面增加一行，就可以获得字段名称
+#+name: t2
+| a | b |
+|   |   |
+|---+---|
+| 1 | 2 |
+| 3 | 4 |
+
+#+begin_src python :var t=t2 :results output
+  import pandas as pd
+  df = pd.DataFrame(t) # t由list<list>转换成了DataFrame对象
+  print(df)
+#+end_src
+
+#+RESULTS:
+:    0  1
+: 0  a  b
+: 1      
+: 2  1  2
+: 3  3  4
+
+** 获取不带字段名的数据
+通过iloc使用python的切片功能截取指定范围的行获得数据, 并重新建立索引
+#+name: t3
+| a | b |
+|   |   |
+|---+---|
+| 1 | 2 |
+| 3 | 4 |
+
+#+begin_src python :var t=t3 :results output
+  import pandas as pd
+  df = pd.DataFrame(t) # t由list<list>转换成了DataFrame对象
+	df = df.iloc[2::]
+	df = df.reset_index(drop=True)
+  print(df)
+#+end_src
+
+#+RESULTS:
+:    0  1
+: 0  1  2
+: 1  3  4
+
+** 显示结果在results中
+*** 两种模式
+1. :results value是functional模式，也就是把src block中的代码看做一个函数，最后的return语句返回结果
+2. :results output是scripting模式，当做一段脚本代码去运行, 所有结果都输出到stdout，然后显示在代码块下面，不需要return语句
+*** 一种是:return属性指定变量名称
+:results verbatim可以保证输出结果没有被处理
+#+BEGIN_SRC python :exports both :results verbatim :return df
+import pandas as pd
+df = pd.DataFrame({'A': [1000, 1000], 'B' : [60, 100]})
+#+END_SRC
+
+#+RESULTS:
+:       A    B
+: 0  1000   60
+: 1  1000  100
+
+*** 另一种是显示所有输出到stdout的信息
+只需要设置:results output
+#+BEGIN_SRC python :exports both :results output
+import pandas as pd
+test = pd.DataFrame({'A': [1000, 1000], 'B' : [60, 100]})
+print(test)
+
+
+#+END_SRC
+
+#+RESULTS:
+:       A    B
+: 0  1000   60
+: 1  1000  100
+: /home/dean/work/pyenv/quantopianPython/bin/python
+
+** 将dataframe转变为org table
+   主要是使用这个属性:results table, 然后先将df转换成csv文本, 并且按照,分隔，按照\n换行。
+   df里面包含了字段名称, df.values里面包含了值, [None]表示分隔行
+   #+BEGIN_SRC python :exports both :results table
+     import pandas as pd
+     df = pd.DataFrame({'A': [1000, 1000], 'B' : [60, 100]})
+     result = [list(df)] + [None] + df.values.tolist()
+     return result
+   #+END_SRC
+    
+   #+RESULTS:
+   |    A |   B |
+   |------+-----|
+   | 1000 |  60 |
+   | 1000 | 100 |
+
+** :session的使用
+   注意, 要先在第一个block中C-c C-c运行一下, 后面的block才能调用p函数
+   #+begin_src python :session test
+     a = 1
+     def p(x):
+       print(x)
+   #+end_src
+
+   #+RESULTS:
+
+   #+begin_src python :session test :results output
+     p('b')
+   #+end_src
+
+   #+RESULTS:
+   : b
+
+** 加载python脚本
+在org相同目录下有一个common.py文件，代码如下
+#+begin_src python
+def hello():
+    print("hello")
+#+end_src
+
+然后在src block中如下使用该模块:
+#+begin_src python :results output
+import common
+common.hello()
+#+end_src
+
+#+RESULTS:
+: hello
+
+** 修改org table
+主要是增加在#+results: 后面接上一个name: mytable-calc, 和src block的name相同
+注意，
+1. 字段名写在第一行
+2. 第二行要有，可以为空，也可以是描述
+3. 第三行是分割线
+4. 之后都是数据
+5. ----分隔符会丢失，比较讨厌
+
+#+name: mytable
+#+RESULTS: mytable-calc
+| a | b | c |
+|   |   |   |
+|---+---+---|
+| 0 | 0 | 0 |
+| 0 | 0 | 0 |
+
+
+#+name: mytable-calc
+#+begin_src python :var t=mytable
+  import common
+  df, cols2 = common.tableToDF(t)
+  return common.dfToTable(df, cols2)
+#+end_src
+
+common.py代码是自己写的, 提供了一些方便的函数做org table和df之间的转换
+
+* tool库操纵org table
+** 设计目标
+   把org table作为数据源，利用python pandas datafrme的数据处理功能(特别是统计功能), 对数据进行分析统计，以及可视化.
+   最终还可以将计算后的数据更新到输入的org table。当然也可以输出到新的org table或者显示统计图形。
+** 加载tool库
+   #+begin_src python
+     import sys
+     sys.path.insert(1, "/home/dean/work/gitlab/gitlab.com/mystudy/emacs/org")
+     from tool import MyTable
+   #+end_src
+** org table的要求
+   org table必须按照如下格式准备:
+   1. 字段名写在第一行
+   2. 第二行要有，可以为空，也可以是描述
+   3. 第三行是分割线
+   4. 之后都是数据
+   5. #+name: 要有
+   6. #+results: evalTblCal要和src block的name相同
+   @return 返回df以及字段名第二行的数据columns2
+** src block的要求
+   1. :hlines yes, 这样可以输出的时候保持org table的横线
+   2. src block的name需要指定，如果和org table的#+results:值相同，就是更新org table, 如果不是，则新创建一个results块输出结果
+
+** 创建MyTable对象
+   #+begin_src python :var t=evalTable :hlines yes
+     table = MyTable(table=t) # 从org table创建MyTable对象
+     table = MyTable(csvFilePath="long1.csv") # 从本次csv文件创建MyTable对象
+     table = MyTable(csvFilePath="long1.csv") # 从本次csv文件创建MyTable对象, 默认只显示10行, showRowNum只在csv文件作为数据源时有用
+   #+end_src
+** 设置字段类型
+#+begin_src python
+  table.toFloat(['SPY', 'v3', 'v3.1', 'v3.1-SPY', 'long收益', 'short收益', '总收益', 'long投入成本', 'short借贷最大金额', '每笔交易金额'])
+  table.toInt(['v3.1成交次数'])
+#+end_src
+** 统计函数
+*** 对指定行范围内的全部列进行求和统计
+#+begin_src python
+  sumResult = table.sumColumns(0, 7)
+  table.df['SPY'][8] = sumResult['SPY'] # 赋值到其中一个cell
+#+end_src
+*** 对两列进行加减计算，结果保存到第三列
+#+begin_src python
+  # 计算v3.1-SPY的值
+  table.subtractColumns(0, 7, 'v3.1', 'v3', 'v3.1-SPY')
+
+  # 计算总收益
+  table.addColumns(0, 7, 'long收益', 'short收益', '总收益')
+#+end_src
+*** 对指定行范围内的某一列数值进行复利计算
+#+begin_src python
+  table.df['v3'][7] = table.calCompoundNum(df, 0, 7, 'v3')
+#+end_src
+*** 计算指定行范围内的某列的均值
+#+begin_src python
+  table.df['long投入成本'][9] = table.avgColumn(df, 0, 7, 'long投入成本')
+#+end_src
+
+** 空值处理
+   空值(nan, 'NaN'等)在df中以None值存在，在输出到table的时候的会被换成''
+** 输出浮点数精度
+DataFrame里面保存的浮点数不会减少精度，但是输出的函数会做相应处理，保证到org table的浮点数只有两位小数
+** 输出到org table
+*** 更新原有的org table
+    只需要org table的#+results: 和src block的name相同
+*** 输出到其他results
+    一般用于测试, 只需要#+results: 和src block的name不同
+*** 其他设置
+     src block中:results table或者不设置，代码中要有这句
+     #+begin_src python
+     return table.toOrgTable()
+     #+end_src
+** 读取csv文件，统计后的结果输出到org table
+   示例: 
+
+   #+name: 交易类型分布
+   #+results: 交易类型分布结果
+   | pMACD交易类型 | 总次数1 | gMACD趋势交易类型 | 总次数2 |
+   |               |         |                   |         |
+   |---------------+---------+-------------------+---------|
+   | long          |      50 | long              |      45 |
+   | short         |      22 | short             |      28 |
+   |---------------+---------+-------------------+---------|
+   | 累计          |      72 |                   |      73 |
+    
+   #+name: 交易类型分布结果
+   #+begin_src python :var t=交易类型分布 :hlines yes
+     import sys
+     import numpy as np
+     sys.path.insert(1, "/home/dean/work/gitlab/gitlab.com/mystudy/emacs/org")
+     from tool import MyTable
+     table = MyTable(csvFilePath='./数据模型/分析层/双因子交易明细2019-05-28_2019-07-03_10.csv')
+     df1 = table.df.query('pMACD == "long"')
+    
+     table2 = MyTable(table=t)
+     table2.df['总次数1'][0] = df1['pMACD'].size
+    
+     df2 = table.df.query('pMACD == "short"')
+     table2.df['总次数1'][1] = df2['pMACD'].size
+    
+     table2.df['总次数1'][2] = df1['pMACD'].size + df2['pMACD'].size
+    
+     df3 = table.df.query('累计比较 == "long"')
+     table2.df['总次数2'][0] = df3['累计比较'].size
+    
+     df4 = table.df.query('累计比较 == "short"')
+     table2.df['总次数2'][1] = df4['累计比较'].size
+    
+     table2.df['总次数2'][2] = df3['累计比较'].size + df4['累计比较'].size
+     return table2.toOrgTable()
+   #+end_src
