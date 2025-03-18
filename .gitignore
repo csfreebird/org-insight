@@ -1,1 +1,5 @@
 *~
+*#
+build/
+org_insight.egg-info/
+org_insight/org_insight.egg-info/

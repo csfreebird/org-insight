@@ -6,5 +6,9 @@
    2) dataframe内容可以生成org talbe, 方便查看数据
    3) 使用第三方python工具生成图标
    4) 文档，介绍org table和python dataframe以及可视化图表的基础知识
+
+* 安装
+进入org_insight目录，运行pip install .
+
       
        
