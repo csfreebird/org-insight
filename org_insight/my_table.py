@@ -228,7 +228,7 @@ def toOrgTable(df, showRowNum=10):
     for line in t1:
         line2 = []
         for idx, e in enumerate(line):
-            line2.append(convertToDisplay(e, df2.dtypes[idx]))
+            line2.append(convertToDisplay(e, df2.dtypes.iloc[idx]))
         t2.append(line2)
     cols2 = []
     innerCols2 = []
