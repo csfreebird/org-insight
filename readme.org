@@ -19,27 +19,7 @@
 4. python dataframe的数据可以来自任何地方，例子中读取自mongodb
 5. src block的标记: #+begin_src python :results table :hlines yes
 
-#+RESULTS: 交易明细表
-|   代码 | 简称     |       日期 |  价格 | 股数 |  印花税 |   佣金 | 过户费 |   其他 |
-|        |          |            |       |      |         |        |        |        |
-|--------+----------+------------+-------+------+---------+--------+--------+--------|
-| 601100 | 恒立液压 | 2025-03-07 | 93.34 | 2600 | -121.34 | -12.45 |  -2.42 | -13.13 |
-| 601100 | 恒立液压 | 2025-03-07 | 93.98 | 1200 |  -56.40 |  -5.80 |  -1.13 |  -6.09 |
-| 601100 | 恒立液压 | 2025-03-07 | 93.76 |  200 |   -9.38 |  -3.98 |  -0.19 |  -1.02 |
-| 601100 | 恒立液压 | 2025-03-07 | 95.05 | 1000 |  -47.53 |  -4.89 |  -0.97 |  -5.13 |
+[[./imgs/实例1.png]]   
 
-
-#+name: 交易明细表
-#+begin_src python :results table :hlines yes
-  import pymongo
-  from pixiu import mongo as m
-  import org_insight.my_table as t
-  import pandas as pd
-  ds_db = m.connect('dataset')
-  table = ds_db['交易明细']
-  docs = table.find({}, {'_id': 0}).sort([('日期', pymongo.DESCENDING)]).limit(10)
-  df1 = pd.DataFrame(list(docs)) 
-  return t.toOrgTable(df1, showRowNum=20)
-#+end_src
 
        
