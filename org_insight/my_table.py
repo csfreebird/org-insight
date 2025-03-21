@@ -210,7 +210,7 @@ def convertToDisplay(e, dtype):
     if pd.isna(e):
         return ""
     if pd.api.types.is_float_dtype(dtype):
-        return "{:.2f}".format(e)
+        return "{:.6f}".format(e)
     return e
 
 
