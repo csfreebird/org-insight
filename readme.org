@@ -22,4 +22,11 @@
 [[./imgs/实例1.png]]   
 
 
-       
+** 读取org table转换成DataFrame
+1. org table 字段一行后面要有一行空行和水平分割线
+2. org table的name属性值 要赋给src blaock中的 :var t变量
+3. 使用org_insight.my_table里的MyTable接受t, 并转换成dataframe保存在MyTable的df属性里
+4. 然后就可以针对这个df使用python函数进行各种变幻
+5. 结果可以通过:results output直接print出来，也可以通过:results table，转换成新的org table显示出来
+[[./imgs/实例2.jpg]]       
+
