@@ -244,7 +244,7 @@ common.py代码是自己写的, 提供了一些方便的函数做org table和df�
 DataFrame里面保存的浮点数不会减少精度，但是输出的函数会做相应处理，保证到org table的浮点数只有两位小数
 ** 输出到org table
 *** 更新原有的org table
-    只需要org table的#+results: 和src block的name相同
+只需要org table的#+results: 和src block的name相同
 *** 输出到其他results
     一般用于测试, 只需要#+results: 和src block的name不同
 *** 其他设置
