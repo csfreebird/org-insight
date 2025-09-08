@@ -2,7 +2,7 @@
 
 * 功能介绍
  1. 只提供python工具操纵org-table
-    + dataframe内容可以生成org talbe, 方便查看数据
+    + dataframe内容可以生成org table, 方便查看数据
     + 读取org table内容，转换成python dataframe, 方便做数据分析
      
  2. 为保证工具的简洁, 不提供但可以自己使用丰富的python库，扩展自己的功能，比如:
