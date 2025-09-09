@@ -30,5 +30,6 @@
 3. 使用org_insight.my_table里的MyTable接受t, 并转换成dataframe保存在MyTable的df属性里
 4. 然后就可以针对这个df使用python函数进行各种变幻
 5. 结果可以通过:results output直接print出来，也可以通过:results table，转换成新的org table显示出来
-[[./imgs/实例2.jpg]]       
+[[./imgs/实例2.jpg]]
+
 

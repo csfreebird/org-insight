@@ -239,6 +239,18 @@ def toOrgTable(df, showRowNum=10):
     return result
 
 
+"""
+负责读取org table的数据
+转化成DataFrame后
+"""
+def org_table_to_df(table=None):
+    """
+    table是org src block的变量，代表org table, 实际上是一个list<list>结构
+    """
+    return MyTable(table).df
+
+
+                
 def convertToInt(e):
     s = str(e)
     if s in ['', 'None']:
