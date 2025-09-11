@@ -2,7 +2,7 @@
 import pandas as pd
 
 
-class MyTable:
+class _MyTable:
     """
     负责读取org table的数据
     转化成DataFrame后，支持各种常见的统计操作
@@ -247,7 +247,7 @@ def org_table_to_df(table=None):
     """
     table是org src block的变量，代表org table, 实际上是一个list<list>结构
     """
-    return MyTable(table).df
+    return _MyTable(table).df
 
 
                 
