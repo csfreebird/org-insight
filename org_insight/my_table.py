@@ -8,7 +8,7 @@ class _MyTable:
     转化成DataFrame后，支持各种常见的统计操作
     并能转换回org table
     """
-    def __init__(self, table=None, csvFilePath=None, showRowNum=10, indexCol=None):
+    def __init__(self, table=None, csvFilePath=None, row_num=10, indexCol=None):
         """
         table是org src block的变量，代表org table, 实际上是一个list<list>结构
         self.cols2代表字段名称下面的第二行, 参考tableToDF注释org table的使用格式约定
@@ -19,7 +19,7 @@ class _MyTable:
         """
         self.table = table
         self.csvFilePath = csvFilePath
-        self.showRowNum = showRowNum
+        self.row_num = row_num
         if self.table is not None:
             self.df, self.cols2, self.hLines = self.__tableToDF(self.table)
         else:
@@ -63,26 +63,6 @@ class _MyTable:
         cols2.append(table[1])
         return df, cols2, hLines
 
-    def toOrgTable(self):
-        """
-        将df的数据转换成list, 用于生成org table
-        float要控制小数精度
-        nan要变成空字符串
-        """
-        df2 = self.df
-        if self.showRowNum is not None:
-            df2 = self.df.iloc[0:0 + self.showRowNum:]
-        t1 = df2.values.tolist()
-        t2 = []
-        for line in t1:
-            line2 = []
-            for idx, e in enumerate(line):
-                line2.append(convertToDisplay(e, df2.dtypes[idx]))
-            t2.append(line2)
-        result = [list(df2)] + self.cols2 + t2
-        for e in self.hLines:
-            result.insert(e, None)
-        return result
 
     def sumColumns(self, rowStart, rowEnd):
         """
@@ -206,29 +186,29 @@ class _MyTable:
         return len(self.df.values)
 
 
-def convertToDisplay(e, dtype):
+def convertToDisplay(e, dtype, float_format):
     if pd.isna(e):
         return ""
     if pd.api.types.is_float_dtype(dtype):
-        return "{:.6f}".format(e)
+        return float_format.format(e)
     return e
 
 
-def toOrgTable(df, showRowNum=10):
+def toOrgTable(df, row_num=10, float_format="{:.3f}"):
     """
     将df的数据转换成list, 用于生成org table
     float要控制小数精度
     nan要变成空字符串
     """
     df2 = df
-    if showRowNum is not None:
-        df2 = df.iloc[0:0 + showRowNum:]
+    if row_num is not None:
+        df2 = df.iloc[0:0 + row_num:]
     t1 = df2.values.tolist()
     t2 = []
     for line in t1:
         line2 = []
         for idx, e in enumerate(line):
-            line2.append(convertToDisplay(e, df2.dtypes.iloc[idx]))
+            line2.append(convertToDisplay(e, df2.dtypes.iloc[idx], float_format))
         t2.append(line2)
     cols2 = []
     innerCols2 = []
